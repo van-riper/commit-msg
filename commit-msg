@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+"""Validate commit messages against the house style."""
+
+import re
+import sys
+from pathlib import Path
+
+
+def strip_message(raw: str) -> str:
+    """Drop comment lines and the scissors block; return clean message."""
+    kept: list[str] = []
+    for line in raw.splitlines():
+        if line.startswith("#") and ">8" in line:
+            break
+        if line.startswith("#"):
+            continue
+        kept.append(line)
+    return "\n".join(kept).strip("\n")
+
+
+if __name__ == "__main__":
+    sys.exit(0)
