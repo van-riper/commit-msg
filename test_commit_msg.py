@@ -34,3 +34,27 @@ def test_skip_merge_and_autosquash():
 def test_no_skip_for_revert_or_normal():
     assert not commit_msg.should_skip('Revert "feat: add x"')
     assert not commit_msg.should_skip("feat: add x")
+
+
+def test_header_format_accepts_valid():
+    assert commit_msg.check_header_format("feat(api)!: add x") == []
+
+
+def test_header_format_rejects_missing_colon():
+    errs = commit_msg.check_header_format("feat add x")
+    assert any("type(scope)" in e for e in errs)
+
+
+def test_header_format_rejects_unknown_type():
+    errs = commit_msg.check_header_format("frobnicate: add x")
+    assert any("unknown type" in e for e in errs)
+
+
+def test_header_format_rejects_capitalized_desc():
+    errs = commit_msg.check_header_format("feat: Add x")
+    assert any("capital" in e for e in errs)
+
+
+def test_header_format_rejects_trailing_period():
+    errs = commit_msg.check_header_format("feat: add x.")
+    assert any("period" in e for e in errs)

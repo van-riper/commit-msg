@@ -27,5 +27,40 @@ def should_skip(first_line: str) -> bool:
     )
 
 
+TYPES = {
+    "feat", "fix", "refactor", "perf", "style", "docs",
+    "build", "test", "ci", "chore", "revert",
+}
+
+HEADER_RE = re.compile(
+    r"^(?P<type>[a-z]+)(?:\((?P<scope>[^)]+)\))?"
+    r"(?P<bang>!)?: (?P<desc>.+)$"
+)
+
+
+def check_header_format(header: str) -> list[str]:
+    """Return errors for header format, type, case, trailing period."""
+    match = HEADER_RE.match(header)
+    if match is None:
+        return [
+            "header must match 'type(scope)!: subject' with a "
+            "lowercase type and a ': ' separator"
+        ]
+    errors: list[str] = []
+    if match["type"] not in TYPES:
+        errors.append(
+            f"unknown type '{match['type']}'; expected one of "
+            + ", ".join(sorted(TYPES))
+        )
+    desc = match["desc"]
+    if desc[:1].isupper():
+        errors.append(
+            "description must not start with a capital letter"
+        )
+    if desc.endswith("."):
+        errors.append("description must not end with a period")
+    return errors
+
+
 if __name__ == "__main__":
     sys.exit(0)
