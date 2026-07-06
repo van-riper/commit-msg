@@ -18,5 +18,14 @@ def strip_message(raw: str) -> str:
     return "\n".join(kept).strip("\n")
 
 
+def should_skip(first_line: str) -> bool:
+    """True for machine-generated messages that bypass validation."""
+    return (
+        first_line.startswith("Merge ")
+        or first_line.startswith("fixup!")
+        or first_line.startswith("squash!")
+    )
+
+
 if __name__ == "__main__":
     sys.exit(0)

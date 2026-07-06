@@ -23,3 +23,14 @@ def test_strip_drops_scissors_block():
         "diff --git a/x b/x\n"
     )
     assert commit_msg.strip_message(raw) == "feat: add thing"
+
+
+def test_skip_merge_and_autosquash():
+    assert commit_msg.should_skip("Merge branch 'main'")
+    assert commit_msg.should_skip("fixup! feat: add x")
+    assert commit_msg.should_skip("squash! feat: add x")
+
+
+def test_no_skip_for_revert_or_normal():
+    assert not commit_msg.should_skip('Revert "feat: add x"')
+    assert not commit_msg.should_skip("feat: add x")
