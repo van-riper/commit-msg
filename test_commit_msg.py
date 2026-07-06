@@ -75,3 +75,26 @@ def test_header_length_rejects_over_72():
     header = "feat: " + "a" * 70  # 76 chars
     errs, warns = commit_msg.check_header_length(header)
     assert any("72" in e for e in errs)
+
+
+def test_body_requires_blank_line():
+    lines = ["feat: add x", "body with no blank"]
+    errs = commit_msg.check_body(lines)
+    assert any("blank line" in e for e in errs)
+
+
+def test_body_wrap_rejects_long_line():
+    lines = ["feat: add x", "", "x" * 73]
+    errs = commit_msg.check_body(lines)
+    assert any("72" in e for e in errs)
+
+
+def test_body_wrap_exempts_trailer_and_url():
+    long_trailer = "Co-Authored-By: " + "n" * 70
+    long_url = "Ref: https://example.com/" + "p" * 70
+    lines = ["feat: add x", "", long_trailer, long_url]
+    assert commit_msg.check_body(lines) == []
+
+
+def test_body_header_only_is_fine():
+    assert commit_msg.check_body(["feat: add x"]) == []

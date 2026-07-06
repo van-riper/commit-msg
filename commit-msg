@@ -80,5 +80,31 @@ def check_header_length(
     return ([], [])
 
 
+TRAILER_RE = re.compile(
+    r"^(Co-Authored-By|Reviewed-By|Ref|Fix|Close|BREAKING CHANGES?): "
+)
+URL_RE = re.compile(r"https?://")
+
+
+def _wrap_exempt(line: str) -> bool:
+    """Trailers and URL-bearing lines are not wrapped."""
+    return bool(TRAILER_RE.match(line)) or bool(URL_RE.search(line))
+
+
+def check_body(lines: list[str]) -> list[str]:
+    """Require a blank separator and wrap non-exempt body lines at 72."""
+    if len(lines) < 2:
+        return []
+    errors: list[str] = []
+    if lines[1] != "":
+        errors.append(
+            "body must be separated from the subject by a blank line"
+        )
+    for number, line in enumerate(lines[1:], start=2):
+        if len(line) > 72 and not _wrap_exempt(line):
+            errors.append(f"line {number} is {len(line)} chars; wrap at 72")
+    return errors
+
+
 if __name__ == "__main__":
     sys.exit(0)
