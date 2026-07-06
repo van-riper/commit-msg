@@ -98,3 +98,38 @@ def test_body_wrap_exempts_trailer_and_url():
 
 def test_body_header_only_is_fine():
     assert commit_msg.check_body(["feat: add x"]) == []
+
+
+def test_validate_clean_message():
+    msg = "feat(api): add x\n\nExplain the why here.\n"
+    errs, warns = commit_msg.validate(commit_msg.strip_message(msg))
+    assert errs == [] and warns == []
+
+
+def test_validate_collects_multiple_errors():
+    errs, _ = commit_msg.validate("Frob: Add x.")
+    assert len(errs) >= 2
+
+
+def test_main_passes_valid_file(tmp_path):
+    f = tmp_path / "MSG"
+    f.write_text("feat: add x\n")
+    assert commit_msg.main(["commit-msg", str(f)]) == 0
+
+
+def test_main_rejects_bad_file(tmp_path):
+    f = tmp_path / "MSG"
+    f.write_text("nope no colon here\n")
+    assert commit_msg.main(["commit-msg", str(f)]) == 1
+
+
+def test_main_skips_merge(tmp_path):
+    f = tmp_path / "MSG"
+    f.write_text("Merge branch 'main'\n")
+    assert commit_msg.main(["commit-msg", str(f)]) == 0
+
+
+def test_main_allows_empty(tmp_path):
+    f = tmp_path / "MSG"
+    f.write_text("\n# only a comment\n")
+    assert commit_msg.main(["commit-msg", str(f)]) == 0
