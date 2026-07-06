@@ -62,5 +62,23 @@ def check_header_format(header: str) -> list[str]:
     return errors
 
 
+def check_header_length(
+    header: str
+) -> tuple[list[str], list[str]]:
+    """Warn above 50 chars; reject above 72. Prefix is included."""
+    length = len(header)
+    if length > 72:
+        return (
+            [f"header is {length} chars; hard limit is 72"],
+            []
+        )
+    if length > 50:
+        return (
+            [],
+            [f"header is {length} chars; aim for 50 or fewer"]
+        )
+    return ([], [])
+
+
 if __name__ == "__main__":
     sys.exit(0)

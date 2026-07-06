@@ -58,3 +58,20 @@ def test_header_format_rejects_capitalized_desc():
 def test_header_format_rejects_trailing_period():
     errs = commit_msg.check_header_format("feat: add x.")
     assert any("period" in e for e in errs)
+
+
+def test_header_length_ok_under_50():
+    errs, warns = commit_msg.check_header_length("feat: add x")
+    assert errs == [] and warns == []
+
+
+def test_header_length_warns_over_50():
+    header = "feat: " + "a" * 50  # 56 chars
+    errs, warns = commit_msg.check_header_length(header)
+    assert errs == [] and any("50" in w for w in warns)
+
+
+def test_header_length_rejects_over_72():
+    header = "feat: " + "a" * 70  # 76 chars
+    errs, warns = commit_msg.check_header_length(header)
+    assert any("72" in e for e in errs)
