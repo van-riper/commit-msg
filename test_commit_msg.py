@@ -133,3 +133,46 @@ def test_main_allows_empty(tmp_path):
     f = tmp_path / "MSG"
     f.write_text("\n# only a comment\n")
     assert commit_msg.main(["commit-msg", str(f)]) == 0
+
+
+def test_strip_keeps_body_after_hash_mentioning_8():
+    raw = (
+        "feat: add x\n\nfirst body line\n"
+        "# note about >8 retries\nsecond body line\n"
+    )
+    result = commit_msg.strip_message(raw)
+    assert "second body line" in result
+    assert "# note about >8 retries" not in result
+
+
+def test_header_length_boundary_50_ok():
+    header = "feat: " + "a" * 44  # 50 chars
+    assert len(header) == 50
+    errs, warns = commit_msg.check_header_length(header)
+    assert errs == [] and warns == []
+
+
+def test_header_length_boundary_72_warns_not_rejects():
+    header = "feat: " + "a" * 66  # 72 chars
+    assert len(header) == 72
+    errs, warns = commit_msg.check_header_length(header)
+    assert errs == [] and warns != []
+
+
+def test_header_length_boundary_73_rejects():
+    header = "feat: " + "a" * 67  # 73 chars
+    assert len(header) == 73
+    errs, _ = commit_msg.check_header_length(header)
+    assert errs != []
+
+
+def test_main_warning_only_passes(tmp_path):
+    f = tmp_path / "MSG"
+    f.write_text("feat: " + "a" * 50 + "\n")  # 56-char header
+    assert commit_msg.main(["commit-msg", str(f)]) == 0
+
+
+def test_main_validates_revert_not_skipped(tmp_path):
+    f = tmp_path / "MSG"
+    f.write_text('Revert "feat: add x"\n')
+    assert commit_msg.main(["commit-msg", str(f)]) == 1

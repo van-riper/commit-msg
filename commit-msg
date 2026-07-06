@@ -6,11 +6,14 @@ import sys
 from pathlib import Path
 
 
+SCISSORS_RE = re.compile(r"-{2,} >8 -{2,}")
+
+
 def strip_message(raw: str) -> str:
     """Drop comment lines and the scissors block; return clean message."""
     kept: list[str] = []
     for line in raw.splitlines():
-        if line.startswith("#") and ">8" in line:
+        if line.startswith("#") and SCISSORS_RE.search(line):
             break
         if line.startswith("#"):
             continue
