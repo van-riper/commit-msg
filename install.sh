@@ -11,3 +11,4 @@ git config --global core.hooksPath "$hooks_dir"
 
 echo "installed: $hooks_dir/commit-msg -> $src"
 echo "core.hooksPath = $(git config --global core.hooksPath)"
+echo "warning: global core.hooksPath shadows each repo's local .git/hooks"
