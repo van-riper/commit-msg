@@ -74,11 +74,11 @@ def check_header_format(header: str) -> list[str]:
 
 def check_header_length(header: str) -> tuple[list[str], list[str]]:
     """Warn above 50 chars; reject above 72. Prefix is included."""
-    length = len(header)
-    if length > 72:
-        return ([f"header is {length} chars; hard limit is 72"], [])
-    if length > 50:
-        return ([], [f"header is {length} chars; aim for 50 or fewer"])
+    length_chars = len(header)
+    if length_chars > 72:
+        return ([f"header is {length_chars} chars; hard limit is 72"], [])
+    if length_chars > 50:
+        return ([], [f"header is {length_chars} chars; aim for 50 or fewer"])
     return ([], [])
 
 
@@ -88,7 +88,7 @@ TRAILER_RE = re.compile(
 )
 
 
-def _wrap_exempt(line: str) -> bool:
+def _is_wrap_exempt(line: str) -> bool:
     """Trailers and URL-bearing lines are not wrapped."""
     return bool(TRAILER_RE.match(line)) or bool(URL_RE.search(line))
 
@@ -135,10 +135,10 @@ def check_body(lines: list[str]) -> list[str]:
         return []
 
     errors: list[str] = []
-    if lines[1] != "":
+    if lines[1]:
         errors.append("body must be separated from the subject by a blank line")
     for number, line in enumerate(lines[1:], start=2):
-        if len(line) > 72 and not _wrap_exempt(line):
+        if len(line) > 72 and not _is_wrap_exempt(line):
             errors.append(f"line {number} is {len(line)} chars; wrap at 72")
     return errors
 
