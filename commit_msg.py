@@ -57,6 +57,7 @@ def check_header_format(header: str) -> list[str]:
             "header must match 'type(scope)!: subject' with a "
             "lowercase type and a ': ' separator"
         ]
+
     errors: list[str] = []
     if match["type"] not in TYPES:
         errors.append(
@@ -132,6 +133,7 @@ def check_body(lines: list[str]) -> list[str]:
     """Require a blank separator and wrap non-exempt body lines at 72."""
     if len(lines) < 2:
         return []
+
     errors: list[str] = []
     if lines[1] != "":
         errors.append("body must be separated from the subject by a blank line")
@@ -172,10 +174,12 @@ def _report(errors: list[str], warnings: list[str]) -> None:
 def main(argv: list[str]) -> int:
     raw = Path(argv[1]).read_text(encoding="utf-8")
     message = strip_message(raw)
+
     if not message.strip():
         return 0
     if should_skip(message.split("\n")[0]):
         return 0
+
     errors, warnings = validate(message)
     _report(errors, warnings)
     return 1 if errors else 0
