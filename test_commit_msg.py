@@ -1,13 +1,17 @@
+"""Tests for the commit-msg hook checks."""
+
 import commit_msg
 import pytest
 
 
 def test_strip_removes_comment_lines() -> None:
+    """Comment lines are dropped from the message."""
     raw = "feat: add thing\n# a comment\n\nbody line\n"
     assert commit_msg.strip_message(raw) == "feat: add thing\n\nbody line"
 
 
 def test_strip_drops_scissors_block() -> None:
+    """Everything from the scissors line onward is dropped."""
     raw = (
         "feat: add thing\n"
         "# ------------------------ >8 ------------------------\n"
@@ -17,17 +21,20 @@ def test_strip_drops_scissors_block() -> None:
 
 
 def test_skip_merge_and_autosquash() -> None:
+    """Merge and autosquash messages bypass validation."""
     assert commit_msg.should_skip("Merge branch 'main'")
     assert commit_msg.should_skip("fixup! feat: add x")
     assert commit_msg.should_skip("squash! feat: add x")
 
 
 def test_no_skip_for_revert_or_normal() -> None:
+    """Revert and ordinary messages are validated, not skipped."""
     assert not commit_msg.should_skip('Revert "feat: add x"')
     assert not commit_msg.should_skip("feat: add x")
 
 
 def test_header_format_accepts_valid() -> None:
+    """A well-formed header produces no errors."""
     assert commit_msg.check_header_format("feat(api)!: add x") == []
 
 
@@ -41,6 +48,7 @@ def test_header_format_accepts_valid() -> None:
     ],
 )
 def test_header_format_rejects(header: str, snippet: str) -> None:
+    """Malformed headers surface the matching error."""
     errs = commit_msg.check_header_format(header)
     assert any(snippet in e for e in errs)
 
@@ -59,6 +67,7 @@ def test_header_format_rejects(header: str, snippet: str) -> None:
 def test_header_length(
     length_chars: int, expect_error: bool, expect_warning: bool
 ) -> None:
+    """Headers warn above 50 chars and reject above 72."""
     header = "feat: " + "a" * (length_chars - len("feat: "))
     assert len(header) == length_chars
     errs, warns = commit_msg.check_header_length(header)
@@ -67,18 +76,21 @@ def test_header_length(
 
 
 def test_body_requires_blank_line() -> None:
+    """A body flush against the subject is rejected."""
     lines = ["feat: add x", "body with no blank"]
     errs = commit_msg.check_body(lines)
     assert any("blank line" in e for e in errs)
 
 
 def test_body_wrap_rejects_long_line() -> None:
+    """A body line past 72 chars is rejected."""
     lines = ["feat: add x", "", "x" * 73]
     errs = commit_msg.check_body(lines)
     assert any("72" in e for e in errs)
 
 
 def test_body_wrap_exempts_trailer_and_url() -> None:
+    """Trailers and URL-bearing lines skip the wrap check."""
     long_trailer = "Co-Authored-By: " + "n" * 70
     long_url = "Ref: https://example.com/" + "p" * 70
     lines = ["feat: add x", "", long_trailer, long_url]
@@ -86,45 +98,53 @@ def test_body_wrap_exempts_trailer_and_url() -> None:
 
 
 def test_body_header_only_is_fine() -> None:
+    """A header with no body passes the body check."""
     assert commit_msg.check_body(["feat: add x"]) == []
 
 
 def test_validate_clean_message() -> None:
+    """A clean message yields no errors and no warnings."""
     msg = "feat(api): add x\n\nExplain the why here.\n"
     errs, warns = commit_msg.validate(commit_msg.strip_message(msg))
     assert errs == [] and warns == []
 
 
 def test_validate_collects_multiple_errors() -> None:
+    """Validate aggregates errors from several checks."""
     errs, _ = commit_msg.validate("Frob: Add x.")
     assert len(errs) >= 2
 
 
 def test_main_passes_valid_file(tmp_path) -> None:
+    """A valid message file exits 0."""
     f = tmp_path / "MSG"
     f.write_text("feat: add x\n")
     assert commit_msg.main(["commit-msg", str(f)]) == 0
 
 
 def test_main_rejects_bad_file(tmp_path) -> None:
+    """An invalid message file exits 1."""
     f = tmp_path / "MSG"
     f.write_text("nope no colon here\n")
     assert commit_msg.main(["commit-msg", str(f)]) == 1
 
 
 def test_main_skips_merge(tmp_path) -> None:
+    """A merge message file exits 0 without validation."""
     f = tmp_path / "MSG"
     f.write_text("Merge branch 'main'\n")
     assert commit_msg.main(["commit-msg", str(f)]) == 0
 
 
 def test_main_allows_empty(tmp_path) -> None:
+    """An empty message (comments only) exits 0."""
     f = tmp_path / "MSG"
     f.write_text("\n# only a comment\n")
     assert commit_msg.main(["commit-msg", str(f)]) == 0
 
 
 def test_strip_keeps_body_after_hash_mentioning_8() -> None:
+    """A comment mentioning '>8' is not mistaken for scissors."""
     raw = (
         "feat: add x\n\nfirst body line\n"
         "# note about >8 retries\nsecond body line\n"
@@ -135,18 +155,21 @@ def test_strip_keeps_body_after_hash_mentioning_8() -> None:
 
 
 def test_main_warning_only_passes(tmp_path) -> None:
+    """A warning-only message still exits 0."""
     f = tmp_path / "MSG"
     f.write_text("feat: " + "a" * 50 + "\n")  # 56-char header
     assert commit_msg.main(["commit-msg", str(f)]) == 0
 
 
 def test_main_validates_revert_not_skipped(tmp_path) -> None:
+    """A malformed revert message is validated and exits 1."""
     f = tmp_path / "MSG"
     f.write_text('Revert "feat: add x"\n')
     assert commit_msg.main(["commit-msg", str(f)]) == 1
 
 
 def test_forbidden_chars_rejects_em_dash_and_emoji() -> None:
+    """Smart typography and emoji are rejected."""
     errs = commit_msg.check_forbidden_chars([
         "feat: do it — now",
         "body \U0001f600",
@@ -156,4 +179,5 @@ def test_forbidden_chars_rejects_em_dash_and_emoji() -> None:
 
 
 def test_forbidden_chars_allows_plain_ascii() -> None:
+    """Plain ASCII passes the forbidden-character check."""
     assert commit_msg.check_forbidden_chars(["feat: plain ascii"]) == []

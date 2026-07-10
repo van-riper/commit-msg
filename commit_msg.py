@@ -172,6 +172,7 @@ def _report(errors: list[str], warnings: list[str]) -> None:
 
 
 def main(argv: list[str]) -> int:
+    """Validate the commit message file; return the hook exit code."""
     raw = Path(argv[1]).read_text(encoding="utf-8")
     message = strip_message(raw)
 
