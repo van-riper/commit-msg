@@ -94,6 +94,46 @@ def _wrap_exempt(line: str) -> bool:
     return bool(TRAILER_RE.match(line)) or bool(URL_RE.search(line))
 
 
+FORBIDDEN_CHARS = {
+    "—": "em dash",
+    "–": "en dash",
+    "―": "horizontal bar",
+    "“": "curly left double quote",
+    "”": "curly right double quote",
+    "‘": "curly left single quote",
+    "’": "curly right single quote",
+    "…": "ellipsis",
+    "•": "bullet",
+    "→": "right arrow",
+    "←": "left arrow",
+    " ": "non-breaking space",
+}
+
+EMOJI_RE = re.compile(
+    "["
+    "\U0001F1E6-\U0001FAFF"
+    "\U00002600-\U000027BF"
+    "\U00002B00-\U00002BFF"
+    "]"
+)
+
+
+def check_forbidden_chars(lines: list[str]) -> list[str]:
+    """Reject smart-typography and emoji glyphs common in AI output."""
+    errors: list[str] = []
+    for number, line in enumerate(lines, start=1):
+        for char, name in FORBIDDEN_CHARS.items():
+            if char in line:
+                article = "an" if name[0] in "aeiou" else "a"
+                errors.append(
+                    f"line {number} contains {article} {name} "
+                    f"('{char}'); use plain ASCII instead"
+                )
+        if EMOJI_RE.search(line):
+            errors.append(f"line {number} contains an emoji; remove it")
+    return errors
+
+
 def check_body(lines: list[str]) -> list[str]:
     """Require a blank separator and wrap non-exempt body lines at 72."""
     if len(lines) < 2:
@@ -117,6 +157,7 @@ def validate(message: str) -> tuple[list[str], list[str]]:
     length_errors, warnings = check_header_length(header)
     errors += length_errors
     errors += check_body(lines)
+    errors += check_forbidden_chars(lines)
     return errors, warnings
 
 

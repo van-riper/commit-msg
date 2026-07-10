@@ -176,3 +176,16 @@ def test_main_validates_revert_not_skipped(tmp_path):
     f = tmp_path / "MSG"
     f.write_text('Revert "feat: add x"\n')
     assert commit_msg.main(["commit-msg", str(f)]) == 1
+
+
+def test_forbidden_chars_rejects_em_dash_and_emoji():
+    errs = commit_msg.check_forbidden_chars([
+        "feat: do it — now",
+        "body \U0001f600",
+    ])
+    assert any("em dash" in e for e in errs)
+    assert any("emoji" in e for e in errs)
+
+
+def test_forbidden_chars_allows_plain_ascii():
+    assert commit_msg.check_forbidden_chars(["feat: plain ascii"]) == []
