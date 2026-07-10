@@ -2,13 +2,15 @@
 set -eu
 
 hooks_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git/hooks"
-src="$(cd "$(dirname "$0")" && pwd)/commit-msg"
+src="$(cd "$(dirname "$0")" && pwd)/commit_msg.py"
 
 mkdir -p "$hooks_dir"
 chmod +x "$src"
-ln -sf "$src" "$hooks_dir/commit-msg"
+rm -f "$hooks_dir/commit-msg"
+cp "$src" "$hooks_dir/commit-msg"
+chmod +x "$hooks_dir/commit-msg"
 git config --global core.hooksPath "$hooks_dir"
 
-echo "installed: $hooks_dir/commit-msg -> $src"
+echo "installed: $hooks_dir/commit-msg (copied from $src)"
 echo "core.hooksPath = $(git config --global core.hooksPath)"
 echo "warning: global core.hooksPath shadows each repo's local .git/hooks"
