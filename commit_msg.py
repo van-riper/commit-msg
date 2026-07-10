@@ -5,7 +5,6 @@ import re
 import sys
 from pathlib import Path
 
-
 SCISSORS_RE = re.compile(r"-{2,} >8 -{2,}")
 
 
@@ -31,8 +30,17 @@ def should_skip(first_line: str) -> bool:
 
 
 TYPES = {
-    "feat", "fix", "refactor", "perf", "style", "docs",
-    "build", "test", "ci", "chore", "revert",
+    "feat",
+    "fix",
+    "refactor",
+    "perf",
+    "style",
+    "docs",
+    "build",
+    "test",
+    "ci",
+    "chore",
+    "revert",
 }
 
 HEADER_RE = re.compile(
@@ -57,36 +65,26 @@ def check_header_format(header: str) -> list[str]:
         )
     desc = match["desc"]
     if desc[:1].isupper():
-        errors.append(
-            "description must not start with a capital letter"
-        )
+        errors.append("description must not start with a capital letter")
     if desc.endswith("."):
         errors.append("description must not end with a period")
     return errors
 
 
-def check_header_length(
-    header: str
-) -> tuple[list[str], list[str]]:
+def check_header_length(header: str) -> tuple[list[str], list[str]]:
     """Warn above 50 chars; reject above 72. Prefix is included."""
     length = len(header)
     if length > 72:
-        return (
-            [f"header is {length} chars; hard limit is 72"],
-            []
-        )
+        return ([f"header is {length} chars; hard limit is 72"], [])
     if length > 50:
-        return (
-            [],
-            [f"header is {length} chars; aim for 50 or fewer"]
-        )
+        return ([], [f"header is {length} chars; aim for 50 or fewer"])
     return ([], [])
 
 
+URL_RE = re.compile(r"https?://")
 TRAILER_RE = re.compile(
     r"^(Co-Authored-By|Reviewed-By|Ref|Fix|Close|BREAKING CHANGES?): "
 )
-URL_RE = re.compile(r"https?://")
 
 
 def _wrap_exempt(line: str) -> bool:
@@ -110,11 +108,7 @@ FORBIDDEN_CHARS = {
 }
 
 EMOJI_RE = re.compile(
-    "["
-    "\U0001F1E6-\U0001FAFF"
-    "\U00002600-\U000027BF"
-    "\U00002B00-\U00002BFF"
-    "]"
+    r"[\U0001f1e6-\U0001faff\U00002600-\U000027bf\U00002b00-\U00002bff]"
 )
 
 
@@ -140,9 +134,7 @@ def check_body(lines: list[str]) -> list[str]:
         return []
     errors: list[str] = []
     if lines[1] != "":
-        errors.append(
-            "body must be separated from the subject by a blank line"
-        )
+        errors.append("body must be separated from the subject by a blank line")
     for number, line in enumerate(lines[1:], start=2):
         if len(line) > 72 and not _wrap_exempt(line):
             errors.append(f"line {number} is {len(line)} chars; wrap at 72")
@@ -172,8 +164,7 @@ def _report(errors: list[str], warnings: list[str]) -> None:
             print(f"  warn: {warning}", file=sys.stderr)
     if errors:
         print(
-            "\nfix the errors above, or bypass with "
-            "'git commit --no-verify'",
+            "\nfix the errors above, or bypass with 'git commit --no-verify'",
             file=sys.stderr,
         )
 
