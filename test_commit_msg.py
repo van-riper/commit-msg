@@ -1,4 +1,5 @@
 import commit_msg
+import pytest
 
 
 def test_strip_removes_comment_lines() -> None:
@@ -30,41 +31,39 @@ def test_header_format_accepts_valid() -> None:
     assert commit_msg.check_header_format("feat(api)!: add x") == []
 
 
-def test_header_format_rejects_missing_colon() -> None:
-    errs = commit_msg.check_header_format("feat add x")
-    assert any("type(scope)" in e for e in errs)
+@pytest.mark.parametrize(
+    ("header", "snippet"),
+    [
+        ("feat add x", "type(scope)"),
+        ("frobnicate: add x", "unknown type"),
+        ("feat: Add x", "capital"),
+        ("feat: add x.", "period"),
+    ],
+)
+def test_header_format_rejects(header: str, snippet: str) -> None:
+    errs = commit_msg.check_header_format(header)
+    assert any(snippet in e for e in errs)
 
 
-def test_header_format_rejects_unknown_type() -> None:
-    errs = commit_msg.check_header_format("frobnicate: add x")
-    assert any("unknown type" in e for e in errs)
-
-
-def test_header_format_rejects_capitalized_desc() -> None:
-    errs = commit_msg.check_header_format("feat: Add x")
-    assert any("capital" in e for e in errs)
-
-
-def test_header_format_rejects_trailing_period() -> None:
-    errs = commit_msg.check_header_format("feat: add x.")
-    assert any("period" in e for e in errs)
-
-
-def test_header_length_ok_under_50() -> None:
-    errs, warns = commit_msg.check_header_length("feat: add x")
-    assert errs == [] and warns == []
-
-
-def test_header_length_warns_over_50() -> None:
-    header = "feat: " + "a" * 50  # 56 chars
+@pytest.mark.parametrize(
+    ("length_chars", "expect_error", "expect_warning"),
+    [
+        (11, False, False),
+        (50, False, False),
+        (56, False, True),
+        (72, False, True),
+        (73, True, False),
+        (76, True, False),
+    ],
+)
+def test_header_length(
+    length_chars: int, expect_error: bool, expect_warning: bool
+) -> None:
+    header = "feat: " + "a" * (length_chars - len("feat: "))
+    assert len(header) == length_chars
     errs, warns = commit_msg.check_header_length(header)
-    assert errs == [] and any("50" in w for w in warns)
-
-
-def test_header_length_rejects_over_72() -> None:
-    header = "feat: " + "a" * 70  # 76 chars
-    errs, warns = commit_msg.check_header_length(header)
-    assert any("72" in e for e in errs)
+    assert bool(errs) == expect_error
+    assert bool(warns) == expect_warning
 
 
 def test_body_requires_blank_line() -> None:
@@ -133,27 +132,6 @@ def test_strip_keeps_body_after_hash_mentioning_8() -> None:
     result = commit_msg.strip_message(raw)
     assert "second body line" in result
     assert "# note about >8 retries" not in result
-
-
-def test_header_length_boundary_50_ok() -> None:
-    header = "feat: " + "a" * 44  # 50 chars
-    assert len(header) == 50
-    errs, warns = commit_msg.check_header_length(header)
-    assert errs == [] and warns == []
-
-
-def test_header_length_boundary_72_warns_not_rejects() -> None:
-    header = "feat: " + "a" * 66  # 72 chars
-    assert len(header) == 72
-    errs, warns = commit_msg.check_header_length(header)
-    assert errs == [] and warns != []
-
-
-def test_header_length_boundary_73_rejects() -> None:
-    header = "feat: " + "a" * 67  # 73 chars
-    assert len(header) == 73
-    errs, _ = commit_msg.check_header_length(header)
-    assert errs != []
 
 
 def test_main_warning_only_passes(tmp_path) -> None:
