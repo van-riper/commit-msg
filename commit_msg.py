@@ -112,6 +112,8 @@ EMOJI_RE = re.compile(
     r"[\U0001f1e6-\U0001faff\U00002600-\U000027bf\U00002b00-\U00002bff]"
 )
 
+DOUBLE_HYPHEN_DASH_RE = re.compile(r"(?<=\S)--|--(?=\s|$)")
+
 
 def check_forbidden_chars(lines: list[str]) -> list[str]:
     """Reject smart-typography and emoji glyphs common in AI output."""
@@ -124,6 +126,11 @@ def check_forbidden_chars(lines: list[str]) -> list[str]:
                     f"line {number} contains {article} {name} "
                     f"('{char}'); use plain ASCII instead"
                 )
+        if DOUBLE_HYPHEN_DASH_RE.search(line):
+            errors.append(
+                f"line {number} contains '--' used as an em dash; "
+                "use plain ASCII instead"
+            )
         if EMOJI_RE.search(line):
             errors.append(f"line {number} contains an emoji; remove it")
     return errors

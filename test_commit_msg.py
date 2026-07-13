@@ -145,10 +145,7 @@ def test_main_allows_empty(tmp_path) -> None:
 
 def test_strip_keeps_body_after_hash_mentioning_8() -> None:
     """A comment mentioning '>8' is not mistaken for scissors."""
-    raw = (
-        "feat: add x\n\nfirst body line\n"
-        "# note about >8 retries\nsecond body line\n"
-    )
+    raw = "feat: add x\n\nfirst body line\n# note about >8 retries\nsecond body line\n"
     result = commit_msg.strip_message(raw)
     assert "second body line" in result
     assert "# note about >8 retries" not in result
@@ -170,10 +167,12 @@ def test_main_validates_revert_not_skipped(tmp_path) -> None:
 
 def test_forbidden_chars_rejects_em_dash_and_emoji() -> None:
     """Smart typography and emoji are rejected."""
-    errs = commit_msg.check_forbidden_chars([
-        "feat: do it — now",
-        "body \U0001f600",
-    ])
+    errs = commit_msg.check_forbidden_chars(
+        [
+            "feat: do it — now",
+            "body \U0001f600",
+        ]
+    )
     assert any("em dash" in e for e in errs)
     assert any("emoji" in e for e in errs)
 
@@ -181,3 +180,20 @@ def test_forbidden_chars_rejects_em_dash_and_emoji() -> None:
 def test_forbidden_chars_allows_plain_ascii() -> None:
     """Plain ASCII passes the forbidden-character check."""
     assert commit_msg.check_forbidden_chars(["feat: plain ascii"]) == []
+
+
+@pytest.mark.parametrize(
+    ("line", "should_reject"),
+    [
+        ("this is a -- sneaky em-dash", True),
+        ("trailing double hyphen --", True),
+        ("word--word glued both sides", True),
+        ("sentence ends with text--", True),
+        ("here's a CLI --flag", False),
+        ("run with --flag=value", False),
+    ],
+)
+def test_forbidden_chars_double_hyphen(line: str, should_reject: bool) -> None:
+    """'--' is rejected unless it's a flag: space-before, glued-after."""
+    errs = commit_msg.check_forbidden_chars([line])
+    assert bool(errs) == should_reject
