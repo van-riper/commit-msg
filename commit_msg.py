@@ -5,6 +5,8 @@ import re
 import sys
 from pathlib import Path
 
+__version__ = "0.1.1"
+
 SCISSORS_RE = re.compile(r"-{2,} >8 -{2,}")
 
 
@@ -180,6 +182,10 @@ def _report(errors: list[str], warnings: list[str]) -> None:
 
 def main(argv: list[str]) -> int:
     """Validate the commit message file; return the hook exit code."""
+    if argv[1:2] == ["--version"]:
+        print(__version__)
+        return 0
+
     raw = Path(argv[1]).read_text(encoding="utf-8")
     message = strip_message(raw)
 

@@ -122,6 +122,12 @@ def test_main_passes_valid_file(tmp_path) -> None:
     assert commit_msg.main(["commit-msg", str(f)]) == 0
 
 
+def test_main_prints_version(capsys) -> None:
+    """'--version' prints the version and exits 0 without a message file."""
+    assert commit_msg.main(["commit-msg", "--version"]) == 0
+    assert capsys.readouterr().out.strip() == commit_msg.__version__
+
+
 def test_main_rejects_bad_file(tmp_path) -> None:
     """An invalid message file exits 1."""
     f = tmp_path / "MSG"
