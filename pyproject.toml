@@ -19,3 +19,8 @@ testpaths = ["."]
     "FBT001",  # boolean positional: parametrized flags, not an API
     "PT018",   # composite assertion: readable as one line here
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
