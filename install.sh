@@ -11,6 +11,6 @@ cp "$src" "$hooks_dir/commit-msg"
 chmod +x "$hooks_dir/commit-msg"
 git config --global core.hooksPath "$hooks_dir"
 
-echo "installed: $hooks_dir/commit-msg (copied from $src)"
+echo "installed: $hooks_dir/commit-msg ($("$hooks_dir/commit-msg" --version))"
 echo "core.hooksPath = $(git config --global core.hooksPath)"
 echo "warning: global core.hooksPath shadows each repo's local .git/hooks"
