@@ -91,10 +91,17 @@ def test_body_wrap_rejects_long_line() -> None:
 
 def test_body_wrap_exempts_trailer_and_url() -> None:
     """Trailers and URL-bearing lines skip the wrap check."""
-    long_trailer = "Co-Authored-By: " + "n" * 70
+    long_trailer = "Co-authored-by: " + "n" * 70
     long_url = "Ref: https://example.com/" + "p" * 70
     lines = ["feat: add x", "", long_trailer, long_url]
     assert commit_msg.check_body(lines) == []
+
+
+def test_body_wrap_rejects_unknown_trailer_shaped_line() -> None:
+    """A 'Word: value' line is only wrap-exempt if it's a known trailer."""
+    lines = ["feat: add x", "", "Whatever: " + "n" * 70]
+    errs = commit_msg.check_body(lines)
+    assert any("72" in e for e in errs)
 
 
 def test_body_header_only_is_fine() -> None:
@@ -151,7 +158,10 @@ def test_main_allows_empty(tmp_path) -> None:
 
 def test_strip_keeps_body_after_hash_mentioning_8() -> None:
     """A comment mentioning '>8' is not mistaken for scissors."""
-    raw = "feat: add x\n\nfirst body line\n# note about >8 retries\nsecond body line\n"
+    raw = (
+        "feat: add x\n\nfirst body line\n"
+        "# note about >8 retries\nsecond body line\n"
+    )
     result = commit_msg.strip_message(raw)
     assert "second body line" in result
     assert "# note about >8 retries" not in result
@@ -171,14 +181,60 @@ def test_main_validates_revert_not_skipped(tmp_path) -> None:
     assert commit_msg.main(["commit-msg", str(f)]) == 1
 
 
+@pytest.mark.parametrize(
+    ("token", "expected"),
+    [
+        ("Co-Authored-By", "Co-authored-by"),
+        ("CO-AUTHORED-BY", "Co-authored-by"),
+        ("co-authored-by", "Co-authored-by"),
+        ("REVIEWED-BY", "Reviewed-by"),
+        ("SIGNED-OFF-BY", "Signed-off-by"),
+        ("ref", "Ref"),
+        ("CC", "Cc"),
+        ("assisted-BY", "Assisted-by"),
+        ("BUG", "Bug"),
+        ("DEPENDS-ON", "Depends-on"),
+    ],
+)
+def test_fix_trailer_casing_normalizes_known_trailer(
+    token: str, expected: str
+) -> None:
+    """Known trailers are rewritten to Sentence-case, any input casing."""
+    raw = f"feat: add x\n\n{token}: value\n"
+    assert commit_msg.fix_trailer_casing(raw) == (
+        f"feat: add x\n\n{expected}: value\n"
+    )
+
+
+def test_fix_trailer_casing_leaves_unknown_token_alone() -> None:
+    """A 'Token: value' line that isn't a known trailer is untouched."""
+    raw = "feat: add x\n\nWhatever: value\n"
+    assert commit_msg.fix_trailer_casing(raw) == raw
+
+
+@pytest.mark.parametrize(
+    "token", ["BREAKING CHANGE", "BREAKING-CHANGE", "breaking change"]
+)
+def test_fix_trailer_casing_exempts_breaking_change(token: str) -> None:
+    """BREAKING CHANGE / BREAKING-CHANGE keep their existing casing."""
+    raw = f"feat: add x\n\n{token}: value\n"
+    assert commit_msg.fix_trailer_casing(raw) == raw
+
+
+def test_main_rewrites_trailer_casing_in_place(tmp_path) -> None:
+    """main() fixes trailer casing in the message file itself."""
+    f = tmp_path / "MSG"
+    f.write_text("feat: add x\n\nCO-AUTHORED-BY: Bot <bot@example.com>\n")
+    assert commit_msg.main(["commit-msg", str(f)]) == 0
+    assert "Co-authored-by: Bot <bot@example.com>" in f.read_text()
+
+
 def test_forbidden_chars_rejects_em_dash_and_emoji() -> None:
     """Smart typography and emoji are rejected."""
-    errs = commit_msg.check_forbidden_chars(
-        [
-            "feat: do it — now",
-            "body \U0001f600",
-        ]
-    )
+    errs = commit_msg.check_forbidden_chars([
+        "feat: do it — now",
+        "body \U0001f600",
+    ])
     assert any("em dash" in e for e in errs)
     assert any("emoji" in e for e in errs)
 

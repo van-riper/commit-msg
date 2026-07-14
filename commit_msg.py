@@ -85,14 +85,90 @@ def check_header_length(header: str) -> tuple[list[str], list[str]]:
 
 
 URL_RE = re.compile(r"https?://")
-TRAILER_RE = re.compile(
-    r"^(Co-Authored-By|Reviewed-By|Ref|Fix|Close|BREAKING CHANGES?): "
+
+TRAILER_LINE_RE = re.compile(
+    r"^([A-Za-z]+(?:-[A-Za-z]+)*|BREAKING[- ]CHANGES?): ", re.MULTILINE
 )
+
+# Mined from the non-merge commit trailers of git/git, torvalds/linux,
+# kubernetes/kubernetes, rust-lang/rust, and llvm/llvm-project (1000 most
+# recent commits each); Reviewed-by, Acked-by, and Refs from the
+# Conventional Commits spec's own footer examples; and Bug, Test,
+# Depends-on, Reviewed-on from Chromium/Gerrit/OpenStack conventions.
+# Change-Id, base-commit, "Differential Revision", and "Test Plan" are
+# real but skipped: the first two have tooling-mandated casing that
+# Sentence-case would corrupt, the last two use a space instead of a
+# hyphen and don't fit this shape.
+KNOWN_TRAILERS = frozenset({
+    "signed-off-by",
+    "co-authored-by",
+    "co-developed-by",
+    "reviewed-by",
+    "acked-by",
+    "tested-by",
+    "reported-by",
+    "suggested-by",
+    "helped-by",
+    "mentored-by",
+    "assisted-by",
+    "cc",
+    "fixes",
+    "closes",
+    "link",
+    "ref",
+    "refs",
+    "bug",
+    "test",
+    "depends-on",
+    "reviewed-on",
+})
+
+
+def _trailer_key(token: str) -> str:
+    """Canonical lookup key: lowercase, spaces folded to hyphens."""
+    return re.sub(r"[\s-]+", "-", token.strip().lower())
+
+
+def _is_breaking_change(token: str) -> bool:
+    return _trailer_key(token).rstrip("s") == "breaking-change"
+
+
+def _is_known_trailer(token: str) -> bool:
+    return _trailer_key(token) in KNOWN_TRAILERS or _is_breaking_change(token)
+
+
+def _sentence_case(token: str) -> str:
+    """First hyphenated word capitalized, the rest lowercase."""
+    words = token.split("-")
+    return "-".join([words[0].capitalize(), *(w.lower() for w in words[1:])])
+
+
+def fix_trailer_casing(raw: str) -> str:
+    """Normalize known body trailers to git's Sentence-case convention.
+
+    The header is left alone: 'type: subject' has the same shape as a
+    trailer but isn't one. BREAKING CHANGE / BREAKING-CHANGE (and their
+    plural typo) also keep whatever casing they already have, since
+    Conventional Commits requires them all-caps rather than sentence-cased.
+    Unrecognized "Token: value" lines are left untouched.
+    """
+
+    def repl(match: re.Match[str]) -> str:
+        token = match.group(1)
+        if not _is_known_trailer(token) or _is_breaking_change(token):
+            return match.group(0)
+        return f"{_sentence_case(token)}: "
+
+    header, sep, body = raw.partition("\n")
+    return header + sep + TRAILER_LINE_RE.sub(repl, body)
 
 
 def _is_wrap_exempt(line: str) -> bool:
-    """Trailers and URL-bearing lines are not wrapped."""
-    return bool(TRAILER_RE.match(line)) or bool(URL_RE.search(line))
+    """Known trailers and URL-bearing lines are not wrapped."""
+    match = TRAILER_LINE_RE.match(line)
+    if match and _is_known_trailer(match.group(1)):
+        return True
+    return bool(URL_RE.search(line))
 
 
 FORBIDDEN_CHARS = {
@@ -186,8 +262,12 @@ def main(argv: list[str]) -> int:
         print(__version__)
         return 0
 
-    raw = Path(argv[1]).read_text(encoding="utf-8")
-    message = strip_message(raw)
+    path = Path(argv[1])
+    raw = path.read_text(encoding="utf-8")
+    fixed = fix_trailer_casing(raw)
+    if fixed != raw:
+        path.write_text(fixed, encoding="utf-8")
+    message = strip_message(fixed)
 
     if not message.strip():
         return 0

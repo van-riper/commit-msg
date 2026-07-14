@@ -26,6 +26,17 @@ don't use if your project uses a git hook manager like pre-commit or lefthook.
 Merge, `fixup!`, `squash!`, and empty messages pass without checks. Revert
 messages are checked.
 
+Known body trailers (`Co-Authored-By:`, `REVIEWED-BY:`, `SIGNED-OFF-BY:`,
+and the like) are rewritten to git's standard `Sentence-case:` casing in
+place, before the checks above run. `BREAKING CHANGE:` / `BREAKING-CHANGE:`
+are exempt, since Conventional Commits requires those all-caps.
+Unrecognized `Token: value` lines are left alone.
+
+The trailer list was mined from the non-merge commit histories of
+git/git, torvalds/linux, kubernetes/kubernetes, rust-lang/rust, and
+llvm/llvm-project, plus the footer tokens from the Conventional Commits
+spec and Chromium/Gerrit/OpenStack conventions.
+
 ## Install
 
 ```sh
