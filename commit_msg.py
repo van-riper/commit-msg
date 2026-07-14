@@ -28,6 +28,7 @@ def should_skip(first_line: str) -> bool:
         first_line.startswith("Merge ")
         or first_line.startswith("fixup!")
         or first_line.startswith("squash!")
+        or first_line.startswith("release:")
     )
 
 

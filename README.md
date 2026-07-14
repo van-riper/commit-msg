@@ -23,8 +23,8 @@ don't use if your project uses a git hook manager like pre-commit or lefthook.
 | Body line over 72 chars (trailers and URLs exempt)        | reject |
 | Em dashes, smart quotes, ellipses, arrows, emoji          | reject |
 
-Merge, `fixup!`, `squash!`, and empty messages pass without checks. Revert
-messages are checked.
+Merge, `fixup!`, `squash!`, `release:`, and empty messages pass without
+checks. Revert messages are checked.
 
 Known body trailers (`Co-Authored-By:`, `REVIEWED-BY:`, `SIGNED-OFF-BY:`,
 and the like) are rewritten to git's standard `Sentence-case:` casing in

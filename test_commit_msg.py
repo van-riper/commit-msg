@@ -25,6 +25,7 @@ def test_skip_merge_and_autosquash() -> None:
     assert commit_msg.should_skip("Merge branch 'main'")
     assert commit_msg.should_skip("fixup! feat: add x")
     assert commit_msg.should_skip("squash! feat: add x")
+    assert commit_msg.should_skip("release: v1.2.3")
 
 
 def test_no_skip_for_revert_or_normal() -> None:
@@ -146,6 +147,13 @@ def test_main_skips_merge(tmp_path) -> None:
     """A merge message file exits 0 without validation."""
     f = tmp_path / "MSG"
     f.write_text("Merge branch 'main'\n")
+    assert commit_msg.main(["commit-msg", str(f)]) == 0
+
+
+def test_main_skips_release(tmp_path) -> None:
+    """A release message file exits 0 without validation."""
+    f = tmp_path / "MSG"
+    f.write_text("release: v1.2.3\n")
     assert commit_msg.main(["commit-msg", str(f)]) == 0
 
 
