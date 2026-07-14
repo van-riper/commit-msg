@@ -5,7 +5,7 @@ import re
 import sys
 from pathlib import Path
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 SCISSORS_RE = re.compile(r"-{2,} >8 -{2,}")
 
