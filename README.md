@@ -4,9 +4,9 @@ A global Git `commit-msg` hook that checks every commit message against my
 curated style: [Conventional Commits][cc] headers plus the [seven rules][seven]
 of a good commit message.
 
-It's particularly useful for checking commits written by LLMs and coding agents,
-which tend to slip in em-dashes, smart quotes, and overlong subjects that the
-checks reject.
+It's particularly useful for normalizing commits written by LLMs and coding
+agents, which tend to slip in em-dashes, smart quotes, and overlong subjects
+that the checks reject.
 
 **NOTE:** this will override any repo-level commit-msg hooks you have set, so
 don't use if your project uses a git hook manager like pre-commit or lefthook.
@@ -43,7 +43,7 @@ spec and Chromium/Gerrit/OpenStack conventions.
 ./install.sh
 ```
 
-This copies `commit_msg.py` to `~/.config/git/hooks/commit-msg` and points
+This copies `commit-msg.sh` to `~/.config/git/hooks/commit-msg` and points
 `core.hooksPath` there, so the hook runs in every repo. A global
 `core.hooksPath` shadows any repo's local `.git/hooks`.
 
@@ -63,9 +63,12 @@ git config --global --unset core.hooksPath
 
 ## Tests
 
+Unit tests are powered by [bats] inside `commit-msg.bats`:
+
 ```sh
-pytest
+bats commit-msg.bats
 ```
 
 [cc]: https://www.conventionalcommits.org
 [seven]: https://cbea.ms/git-commit/#seven-rules
+[bats]: https://github.com/bats-core/bats-core

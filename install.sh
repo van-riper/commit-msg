@@ -2,7 +2,7 @@
 set -eu
 
 hooks_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git/hooks"
-src="$(cd "$(dirname "$0")" && pwd)/commit_msg.py"
+src="$(cd "$(dirname "$0")" && pwd)/commit-msg.sh"
 
 mkdir -p "$hooks_dir"
 chmod +x "$src"
