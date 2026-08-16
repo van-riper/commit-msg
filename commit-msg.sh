@@ -7,7 +7,7 @@
 # shellcheck disable=SC2178
 set -uo pipefail
 
-VERSION="0.3.0"
+VERSION="0.3.1"
 
 SCISSORS_RE='-{2,} >8 -{2,}'
 
@@ -218,6 +218,45 @@ fix_trailer_casing() {
   __out="${header}${sep}${new_body}"
 }
 
+strip_claude_context_suffix() {
+  local raw="$1" __out_name="$2"
+  local header body sep
+  if [[ "$raw" == *$'\n'* ]]; then
+    header="${raw%%$'\n'*}"
+    body="${raw#*$'\n'}"
+    sep=$'\n'
+  else
+    header="$raw"
+    body=""
+    sep=""
+  fi
+
+  local had_trailing_nl=0
+  [[ "$body" == *$'\n' ]] && had_trailing_nl=1
+
+  local -a body_lines=()
+  mapfile -t body_lines < <(printf '%s' "$body")
+
+  local -a rewritten=()
+  local line
+  for line in "${body_lines[@]}"; do
+    if match_trailer_prefix "$line" &&
+      [[ "$(trailer_key "$TRAILER_TOKEN")" == "co-authored-by" ]] &&
+      [[ "$line" == *"<noreply@anthropic.com>"* ]]; then
+      line="${line/ (1M context)/}"
+    fi
+    rewritten+=("$line")
+  done
+
+  local IFS=$'\n'
+  local new_body="${rewritten[*]}"
+  unset IFS
+  ((had_trailing_nl)) && new_body+=$'\n'
+
+  local -n __out="$__out_name"
+  __out="${header}${sep}${new_body}"
+}
+
 is_emoji_codepoint() {
   local cp=$1 i
   for i in "${!EMOJI_RANGE_LO[@]}"; do
@@ -363,6 +402,7 @@ main() {
 
   local fixed
   fix_trailer_casing "$raw" fixed
+  strip_claude_context_suffix "$fixed" fixed
   if [[ "$fixed" != "$raw" ]]; then
     printf '%s' "$fixed" >"$path"
   fi

@@ -32,6 +32,10 @@ place, before the checks above run. `BREAKING CHANGE:` / `BREAKING-CHANGE:`
 are exempt, since Conventional Commits requires those all-caps.
 Unrecognized `Token: value` lines are left alone.
 
+A `Co-authored-by:` trailer for `<noreply@anthropic.com>` has its
+`(1M context)` context-size suffix stripped, since it's noise once the
+commit is written.
+
 The trailer list was mined from the non-merge commit histories of
 git/git, torvalds/linux, kubernetes/kubernetes, rust-lang/rust, and
 llvm/llvm-project, plus the footer tokens from the Conventional Commits

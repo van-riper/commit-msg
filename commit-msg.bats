@@ -293,6 +293,34 @@ setup() {
   grep -qF "Co-authored-by: Bot <bot@example.com>" "$f"
 }
 
+@test "strip_claude_context_suffix removes the context size" {
+  raw="feat: add x"$'\n\n'"Co-authored-by: Claude Opus 5 (1M context) <noreply@anthropic.com>"$'\n'
+  want="feat: add x"$'\n\n'"Co-authored-by: Claude Opus 5 <noreply@anthropic.com>"$'\n'
+  strip_claude_context_suffix "$raw" got
+  [ "$got" = "$want" ]
+}
+
+@test "strip_claude_context_suffix ignores other co-authors" {
+  raw="feat: add x"$'\n\n'"Co-authored-by: Jane Doe (1M context) <jane@example.com>"$'\n'
+  strip_claude_context_suffix "$raw" got
+  [ "$got" = "$raw" ]
+}
+
+@test "strip_claude_context_suffix leaves a plain claude trailer alone" {
+  raw="feat: add x"$'\n\n'"Co-authored-by: Claude Opus 5 <noreply@anthropic.com>"$'\n'
+  strip_claude_context_suffix "$raw" got
+  [ "$got" = "$raw" ]
+}
+
+@test "main strips the context size from the message file itself" {
+  f="$BATS_TEST_TMPDIR/MSG"
+  printf 'feat: add x\n\nCo-authored-by: Claude Opus 5 (1M context) <noreply@anthropic.com>\n' >"$f"
+  run --separate-stderr "$SCRIPT" "$f"
+  [ "$status" -eq 0 ]
+  grep -qF "Co-authored-by: Claude Opus 5 <noreply@anthropic.com>" "$f"
+  ! grep -qF "1M context" "$f"
+}
+
 @test "check_forbidden_chars rejects em dash and emoji" {
   local -a lines=("feat: do it — now" "body 😀")
   local -a errs=()
