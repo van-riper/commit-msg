@@ -7,7 +7,7 @@
 # shellcheck disable=SC2178
 set -uo pipefail
 
-VERSION="0.3.2"
+VERSION="0.3.3"
 
 SCISSORS_RE='-{2,} >8 -{2,}'
 
@@ -331,21 +331,38 @@ check_forbidden_chars() {
   done
 }
 
+PARAGRAPH_MAX_LINES=5
+
 check_body() {
-  local __lines_name="$1" __errors_name="$2"
+  local __lines_name="$1" __errors_name="$2" __warnings_name="$3"
   local -n __lines="$__lines_name"
   local -n __errors="$__errors_name"
+  local -n __warnings="$__warnings_name"
   local count=${#__lines[@]}
   ((count < 2)) && return
   if [[ -n "${__lines[1]}" ]]; then
     __errors+=("body must be separated from the subject by a blank line")
   fi
   local idx number line
-  for ((idx = 1; idx < count; idx++)); do
+  local para_start=0 para_count=0 para_all_trailers=1
+  for ((idx = 1; idx <= count; idx++)); do
     number=$((idx + 1))
-    line="${__lines[idx]}"
-    if ((${#line} > 72)) && ! is_wrap_exempt "$line"; then
+    line="${__lines[idx]:-}"
+    if ((idx < count)) && ((${#line} > 72)) && ! is_wrap_exempt "$line"; then
       __errors+=("line $number is ${#line} chars; wrap at 72")
+    fi
+    if [[ -z "$line" ]]; then
+      if ((para_count > PARAGRAPH_MAX_LINES)) && ((!para_all_trailers)); then
+        __warnings+=(
+          "paragraph at line $para_start is $para_count lines; consider splitting it up"
+        )
+      fi
+      para_count=0
+      para_all_trailers=1
+    else
+      ((para_count == 0)) && para_start=$number
+      para_count=$((para_count + 1))
+      match_trailer_prefix "$line" || para_all_trailers=0
     fi
   done
 }
@@ -362,7 +379,7 @@ validate() {
   local -n __warnings="$__warnings_name"
   __errors+=("${length_errors[@]}")
   __warnings+=("${length_warnings[@]}")
-  check_body lines "$__errors_name"
+  check_body lines "$__errors_name" "$__warnings_name"
   check_forbidden_chars lines "$__errors_name"
 }
 

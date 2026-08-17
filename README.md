@@ -21,6 +21,7 @@ don't use if your project uses a git hook manager like pre-commit or lefthook.
 | Description starts uppercase, or ends with a period       | reject |
 | Body not separated from the subject by a blank line       | reject |
 | Body line over 72 chars (trailers and URLs exempt)        | reject |
+| Body paragraph over 5 lines (trailer blocks exempt)       | warn   |
 | Em dashes, smart quotes, ellipses, arrows, emoji          | reject |
 
 Merge, `fixup!`, `squash!`, `release:`, and empty messages pass without

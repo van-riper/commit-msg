@@ -143,8 +143,8 @@ setup() {
 
 @test "check_body rejects a body flush against the subject" {
   local -a lines=("feat: add x" "body with no blank")
-  local -a errs=()
-  check_body lines errs
+  local -a errs=() warns=()
+  check_body lines errs warns
   [[ "${errs[*]}" == *"blank line"* ]]
 }
 
@@ -152,8 +152,8 @@ setup() {
   local long_line
   long_line="$(printf 'x%.0s' {1..73})"
   local -a lines=("feat: add x" "" "$long_line")
-  local -a errs=()
-  check_body lines errs
+  local -a errs=() warns=()
+  check_body lines errs warns
   [[ "${errs[*]}" == *"72"* ]]
 }
 
@@ -162,8 +162,8 @@ setup() {
   long_trailer="Co-authored-by: $(printf 'n%.0s' {1..70})"
   long_url="Ref: https://example.com/$(printf 'p%.0s' {1..70})"
   local -a lines=("feat: add x" "" "$long_trailer" "$long_url")
-  local -a errs=()
-  check_body lines errs
+  local -a errs=() warns=()
+  check_body lines errs warns
   [ "${#errs[@]}" -eq 0 ]
 }
 
@@ -171,16 +171,53 @@ setup() {
   local long_line
   long_line="Whatever: $(printf 'n%.0s' {1..70})"
   local -a lines=("feat: add x" "" "$long_line")
-  local -a errs=()
-  check_body lines errs
+  local -a errs=() warns=()
+  check_body lines errs warns
   [[ "${errs[*]}" == *"72"* ]]
 }
 
 @test "check_body passes a header with no body" {
   local -a lines=("feat: add x")
-  local -a errs=()
-  check_body lines errs
+  local -a errs=() warns=()
+  check_body lines errs warns
   [ "${#errs[@]}" -eq 0 ]
+}
+
+@test "check_body passes a 5-line paragraph" {
+  local -a lines=("feat: add x" "" "one" "two" "three" "four" "five")
+  local -a errs=() warns=()
+  check_body lines errs warns
+  [ "${#warns[@]}" -eq 0 ]
+}
+
+@test "check_body warns on a 6-line paragraph" {
+  local -a lines=(
+    "feat: add x" "" "one" "two" "three" "four" "five" "six"
+  )
+  local -a errs=() warns=()
+  check_body lines errs warns
+  [ "${#warns[@]}" -eq 1 ]
+  [[ "${warns[0]}" == *"6 lines"* ]]
+}
+
+@test "check_body warns once per over-long paragraph" {
+  local -a lines=(
+    "feat: add x" "" "one" "two" "three" "four" "five" "six" ""
+    "another" "para" "here" "too" "also" "over" "limit"
+  )
+  local -a errs=() warns=()
+  check_body lines errs warns
+  [ "${#warns[@]}" -eq 2 ]
+}
+
+@test "check_body does not warn on a long run of trailers" {
+  local -a lines=(
+    "feat: add x" "" "Signed-off-by: a" "Reviewed-by: b" "Acked-by: c"
+    "Tested-by: d" "Reported-by: e" "Suggested-by: f"
+  )
+  local -a errs=() warns=()
+  check_body lines errs warns
+  [ "${#warns[@]}" -eq 0 ]
 }
 
 @test "validate passes a clean message" {
