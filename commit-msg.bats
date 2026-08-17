@@ -51,6 +51,18 @@ setup() {
   [[ "${errs[*]}" == *"type(scope)"* ]]
 }
 
+@test "check_header_format accepts a multi-part scope with a slash" {
+  local -a errs=()
+  check_header_format "feat(etl/web): add x" errs
+  [ "${#errs[@]}" -eq 0 ]
+}
+
+@test "check_header_format rejects a scope containing whitespace" {
+  local -a errs=()
+  check_header_format "feat(etl web): add x" errs
+  [[ "${errs[*]}" == *"type(scope)"* ]]
+}
+
 @test "check_header_format rejects an unknown type" {
   local -a errs=()
   check_header_format "frobnicate: add x" errs

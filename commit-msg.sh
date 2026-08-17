@@ -7,7 +7,7 @@
 # shellcheck disable=SC2178
 set -uo pipefail
 
-VERSION="0.3.1"
+VERSION="0.3.2"
 
 SCISSORS_RE='-{2,} >8 -{2,}'
 
@@ -16,7 +16,7 @@ declare -gA TYPES=()
 for _type in "${TYPES_SORTED[@]}"; do TYPES[$_type]=1; done
 TYPES_LIST="build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test"
 
-HEADER_RE='^([A-Za-z]+)(\(([^)]+)\))?(!)?: (.+)$'
+HEADER_RE='^([A-Za-z]+)(\(([^)[:space:]]+)\))?(!)?: (.+)$'
 
 TRAILER_LINE_RE='^([A-Za-z]+(-[A-Za-z]+)*|BREAKING[- ]CHANGES?): '
 
