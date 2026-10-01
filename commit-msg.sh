@@ -7,7 +7,7 @@
 # shellcheck disable=SC2178
 set -uo pipefail
 
-VERSION="0.3.3"
+VERSION="0.3.4"
 
 SCISSORS_RE='-{2,} >8 -{2,}'
 
@@ -332,6 +332,7 @@ check_forbidden_chars() {
 }
 
 PARAGRAPH_MAX_LINES=5
+BULLET_LINE_RE='^[[:space:]]*([-*+]|[0-9]+[.)])[[:space:]]+'
 
 check_body() {
   local __lines_name="$1" __errors_name="$2" __warnings_name="$3"
@@ -351,7 +352,7 @@ check_body() {
     if ((idx < count)) && ((${#line} > 72)) && ! is_wrap_exempt "$line"; then
       __errors+=("line $number is ${#line} chars; wrap at 72")
     fi
-    if [[ -z "$line" ]]; then
+    if [[ -z "$line" || "$line" =~ $BULLET_LINE_RE ]]; then
       if ((para_count > PARAGRAPH_MAX_LINES)) && ((!para_all_trailers)); then
         __warnings+=(
           "paragraph at line $para_start is $para_count lines; consider splitting it up"
@@ -359,7 +360,8 @@ check_body() {
       fi
       para_count=0
       para_all_trailers=1
-    else
+    fi
+    if [[ -n "$line" ]]; then
       ((para_count == 0)) && para_start=$number
       para_count=$((para_count + 1))
       match_trailer_prefix "$line" || para_all_trailers=0

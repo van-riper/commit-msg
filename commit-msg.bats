@@ -210,6 +210,35 @@ setup() {
   [ "${#warns[@]}" -eq 2 ]
 }
 
+@test "check_body does not warn on a long tight bullet list" {
+  local -a lines=(
+    "feat: add x" "" "- one" "- two" "- three" "- four" "- five" "- six"
+    "- seven"
+  )
+  local -a errs=() warns=()
+  check_body lines errs warns
+  [ "${#warns[@]}" -eq 0 ]
+}
+
+@test "check_body warns on a single over-long bullet" {
+  local -a lines=(
+    "feat: add x" "" "- one" "  two" "  three" "  four" "  five" "  six"
+  )
+  local -a errs=() warns=()
+  check_body lines errs warns
+  [ "${#warns[@]}" -eq 1 ]
+}
+
+@test "check_body warns on a long paragraph after a bullet list" {
+  local -a lines=(
+    "feat: add x" "" "- one" "- two" ""
+    "a" "b" "c" "d" "e" "f"
+  )
+  local -a errs=() warns=()
+  check_body lines errs warns
+  [ "${#warns[@]}" -eq 1 ]
+}
+
 @test "check_body does not warn on a long run of trailers" {
   local -a lines=(
     "feat: add x" "" "Signed-off-by: a" "Reviewed-by: b" "Acked-by: c"
