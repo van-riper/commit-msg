@@ -81,64 +81,66 @@ setup() {
   [[ "${errs[*]}" == *"period"* ]]
 }
 
-@test "header length 11 chars: no error, no warning" {
-  local header
-  header="feat: $(printf 'a%.0s' {1..5})"
-  [ "${#header}" -eq 11 ]
-  local -a errs=() warns=()
-  check_header_length "$header" errs warns
-  [ "${#errs[@]}" -eq 0 ]
-  [ "${#warns[@]}" -eq 0 ]
+header_with_total_length() {
+  local prefix="$1" total="$2"
+  printf '%s%s' "$prefix" "$(printf 'a%.0s' $(seq 1 $((total - ${#prefix}))))"
 }
 
-@test "header length 50 chars: no error, no warning" {
-  local header
-  header="feat: $(printf 'a%.0s' {1..44})"
-  [ "${#header}" -eq 50 ]
-  local -a errs=() warns=()
-  check_header_length "$header" errs warns
+@test "header length: 6-char prefix allows 50 chars" {
+  local -a errs=()
+  check_header_length "$(header_with_total_length 'feat: ' 50)" errs
   [ "${#errs[@]}" -eq 0 ]
-  [ "${#warns[@]}" -eq 0 ]
 }
 
-@test "header length 56 chars: warning only" {
-  local header
-  header="feat: $(printf 'a%.0s' {1..50})"
-  [ "${#header}" -eq 56 ]
-  local -a errs=() warns=()
-  check_header_length "$header" errs warns
-  [ "${#errs[@]}" -eq 0 ]
-  [ "${#warns[@]}" -eq 1 ]
-}
-
-@test "header length 72 chars: warning only" {
-  local header
-  header="feat: $(printf 'a%.0s' {1..66})"
-  [ "${#header}" -eq 72 ]
-  local -a errs=() warns=()
-  check_header_length "$header" errs warns
-  [ "${#errs[@]}" -eq 0 ]
-  [ "${#warns[@]}" -eq 1 ]
-}
-
-@test "header length 73 chars: error, no warning" {
-  local header
-  header="feat: $(printf 'a%.0s' {1..67})"
-  [ "${#header}" -eq 73 ]
-  local -a errs=() warns=()
-  check_header_length "$header" errs warns
+@test "header length: 6-char prefix rejects 51 chars" {
+  local -a errs=()
+  check_header_length "$(header_with_total_length 'feat: ' 51)" errs
   [ "${#errs[@]}" -eq 1 ]
-  [ "${#warns[@]}" -eq 0 ]
+  [[ "${errs[0]}" == *"limit is 50"* ]]
 }
 
-@test "header length 76 chars: error, no warning" {
-  local header
-  header="feat: $(printf 'a%.0s' {1..70})"
-  [ "${#header}" -eq 76 ]
-  local -a errs=() warns=()
-  check_header_length "$header" errs warns
+@test "header length: 10-char prefix allows 50 chars" {
+  local -a errs=()
+  check_header_length "$(header_with_total_length 'feat(db): ' 50)" errs
+  [ "${#errs[@]}" -eq 0 ]
+}
+
+@test "header length: 11-char prefix limit is 51" {
+  local -a errs=()
+  check_header_length "$(header_with_total_length 'feat(api): ' 51)" errs
+  [ "${#errs[@]}" -eq 0 ]
+  check_header_length "$(header_with_total_length 'feat(api): ' 52)" errs
   [ "${#errs[@]}" -eq 1 ]
-  [ "${#warns[@]}" -eq 0 ]
+  [[ "${errs[0]}" == *"limit is 51 for a 11-char prefix"* ]]
+}
+
+@test "header length: 21-char prefix limit is 61" {
+  local prefix='refactor(sync-ses): '
+  [ "${#prefix}" -eq 20 ]
+  prefix='refactor(sync-sess): '
+  [ "${#prefix}" -eq 21 ]
+  local -a errs=()
+  check_header_length "$(header_with_total_length "$prefix" 61)" errs
+  [ "${#errs[@]}" -eq 0 ]
+  check_header_length "$(header_with_total_length "$prefix" 62)" errs
+  [ "${#errs[@]}" -eq 1 ]
+}
+
+@test "header length: limit is capped at 72" {
+  local prefix='feat(a-very-long-scope-name-indeed-yes): '
+  [ "${#prefix}" -gt 32 ]
+  local -a errs=()
+  check_header_length "$(header_with_total_length "$prefix" 72)" errs
+  [ "${#errs[@]}" -eq 0 ]
+  check_header_length "$(header_with_total_length "$prefix" 73)" errs
+  [ "${#errs[@]}" -eq 1 ]
+  [[ "${errs[0]}" == *"limit is 72"* ]]
+}
+
+@test "header length: unparseable header uses the 50-char floor" {
+  local -a errs=()
+  check_header_length "$(header_with_total_length 'nonsense ' 51)" errs
+  [ "${#errs[@]}" -eq 1 ]
 }
 
 @test "check_body rejects a body flush against the subject" {
@@ -283,6 +285,21 @@ setup() {
   [ "$status" -eq 1 ]
 }
 
+@test "main points a rejection at the saved message file" {
+  f="$BATS_TEST_TMPDIR/MSG"
+  printf 'nope no colon here\n' >"$f"
+  run --separate-stderr "$SCRIPT" "$f"
+  [[ "$stderr" == *"message saved to $f"* ]]
+  [[ "$stderr" == *"git commit -F $f"* ]]
+}
+
+@test "main prints no recovery hint for a passing message" {
+  f="$BATS_TEST_TMPDIR/MSG"
+  printf 'feat: add x\n' >"$f"
+  run --separate-stderr "$SCRIPT" "$f"
+  [[ "$stderr" != *"message saved"* ]]
+}
+
 @test "main skips a merge message file" {
   f="$BATS_TEST_TMPDIR/MSG"
   printf "Merge branch 'main'\n" >"$f"
@@ -306,7 +323,7 @@ setup() {
 
 @test "main passes a warning-only message" {
   f="$BATS_TEST_TMPDIR/MSG"
-  printf 'feat: %s\n' "$(printf 'a%.0s' {1..50})" >"$f"
+  printf 'feat: add x\n\n%s\n' "$(printf 'word\n%.0s' {1..6})" >"$f"
   run --separate-stderr "$SCRIPT" "$f"
   [ "$status" -eq 0 ]
 }

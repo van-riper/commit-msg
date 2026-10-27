@@ -7,7 +7,7 @@
 # shellcheck disable=SC2178
 set -uo pipefail
 
-VERSION="0.3.4"
+VERSION="0.4.0"
 
 SCISSORS_RE='-{2,} >8 -{2,}'
 
@@ -16,6 +16,9 @@ declare -gA TYPES=()
 for _type in "${TYPES_SORTED[@]}"; do TYPES[$_type]=1; done
 TYPES_LIST="build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test"
 
+HEADER_MIN_LIMIT=50
+HEADER_MAX_LIMIT=72
+DESCRIPTION_BUDGET=40
 HEADER_RE='^([A-Za-z]+)(\(([^)[:space:]]+)\))?(!)?: (.+)$'
 
 TRAILER_LINE_RE='^([A-Za-z]+(-[A-Za-z]+)*|BREAKING[- ]CHANGES?): '
@@ -114,16 +117,19 @@ check_header_format() {
 }
 
 check_header_length() {
-  local header="$1" __errors_name="$2" __warnings_name="$3"
+  local header="$1" __errors_name="$2"
   local -n __errors="$__errors_name"
-  local -n __warnings="$__warnings_name"
-  local length_chars=${#header}
-  if ((length_chars > 72)); then
-    __errors+=("header is $length_chars chars; hard limit is 72")
-    return
+  local prefix_chars=0
+  if [[ "$header" =~ $HEADER_RE ]]; then
+    prefix_chars=$((${#header} - ${#BASH_REMATCH[5]}))
   fi
-  if ((length_chars > 50)); then
-    __warnings+=("header is $length_chars chars; aim for 50 or fewer")
+  local limit=$((prefix_chars + DESCRIPTION_BUDGET))
+  ((limit < HEADER_MIN_LIMIT)) && limit=$HEADER_MIN_LIMIT
+  ((limit > HEADER_MAX_LIMIT)) && limit=$HEADER_MAX_LIMIT
+  if ((${#header} > limit)); then
+    __errors+=(
+      "header is ${#header} chars and the limit is $limit for a $prefix_chars-char prefix"
+    )
   fi
 }
 
@@ -375,18 +381,13 @@ validate() {
   split_lines_exact "$message" lines
   local header="${lines[0]}"
   check_header_format "$header" "$__errors_name"
-  local -a length_errors=() length_warnings=()
-  check_header_length "$header" length_errors length_warnings
-  local -n __errors="$__errors_name"
-  local -n __warnings="$__warnings_name"
-  __errors+=("${length_errors[@]}")
-  __warnings+=("${length_warnings[@]}")
+  check_header_length "$header" "$__errors_name"
   check_body lines "$__errors_name" "$__warnings_name"
   check_forbidden_chars lines "$__errors_name"
 }
 
 report() {
-  local __errors_name="$1" __warnings_name="$2"
+  local __errors_name="$1" __warnings_name="$2" message_path="$3"
   local -n __errors="$__errors_name"
   local -n __warnings="$__warnings_name"
   local e w
@@ -403,7 +404,9 @@ report() {
     done
   fi
   if ((${#__errors[@]} > 0)); then
-    printf "\nfix the errors above, or bypass with 'git commit --no-verify'\n" >&2
+    printf '\nmessage saved to %s\n' "$message_path" >&2
+    printf 'fix it there, then run: git commit -F %s\n' "$message_path" >&2
+    printf "or bypass with 'git commit --no-verify'\n" >&2
   fi
 }
 
@@ -436,7 +439,7 @@ main() {
   # shellcheck disable=SC2034 # used by name via validate/report
   local -a warnings=()
   validate "$message" errors warnings
-  report errors warnings
+  report errors warnings "$path"
 
   ((${#errors[@]} > 0)) && return 1
   return 0

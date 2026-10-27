@@ -15,14 +15,19 @@ don't use if your project uses a git hook manager like pre-commit or lefthook.
 
 | Rule                                                      | Result |
 | --------------------------------------------------------- | ------ |
-| Header over 50 chars                                      | warn   |
-| Header over 72 chars                                      | reject |
+| Header over its length limit (see below)                  | reject |
 | Header shaped `type(scope)!: subject`, type from the enum | reject |
 | Description starts uppercase, or ends with a period       | reject |
 | Body not separated from the subject by a blank line       | reject |
 | Body line over 72 chars (trailers and URLs exempt)        | reject |
-| Body paragraph or bullet over 5 lines (trailers exempt)   | warn   |
 | Em dashes, smart quotes, ellipses, arrows, emoji          | reject |
+| Body paragraph or bullet over 5 lines (trailers exempt)   | warn   |
+
+The header limit is the prefix length (`type(scope)!: `) plus 40, but
+never below 50 or above 72. A longer prefix raises the limit by the same
+amount, up to the cap. Across the commit histories of three of my repos,
+descriptions averaged 32 chars whatever the prefix length, and 95% fit
+in 40.
 
 Merge, `fixup!`, `squash!`, `release:`, and empty messages pass without
 checks. Revert messages are checked.
